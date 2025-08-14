@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { storage, db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,7 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import './UploadPhoto.css';
 
 export default function UploadPhoto() {
-  const [selectedFile, setSelectedFile] = useState(null);
+  // Array of { file, progress, error }
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -30,90 +31,114 @@ export default function UploadPhoto() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelect(Array.from(e.dataTransfer.files));
     }
   };
 
-  const handleFileSelect = (file) => {
-    if (file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      setError('');
-    } else {
-      setError('Please select an image file');
+  const handleFilesSelect = (files) => {
+    // Only accept image files, filter out non-images
+    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      setError('Please select image files');
+      return;
     }
+    setSelectedFiles(validFiles.map(file => ({ file, progress: 0, error: null })));
+    setError('');
   };
 
   const handleFileInput = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelect(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFilesSelect(Array.from(e.target.files));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!selectedFile) {
-      setError('Please select a photo to upload');
+    if (!selectedFiles.length) {
+      setError('Please select photo(s) to upload');
       return;
     }
-
+    setUploading(true);
+    setError('');
     try {
-      setUploading(true);
-      setError('');
-
       // Get user data to find family ID
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      
       if (!userDoc.exists()) {
         setError('User data not found');
+        setUploading(false);
         return;
       }
-
       const userData = userDoc.data();
       const familyId = userData.familyId;
-
       if (!familyId) {
         setError('You need to be part of a family to upload photos');
+        setUploading(false);
         return;
       }
-
-      // Create unique filename
-      const timestamp = Date.now();
-      const fileName = `${currentUser.uid}_${timestamp}_${selectedFile.name}`;
-      const imagePath = `families/${familyId}/${fileName}`;
-
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, imagePath);
-      await uploadBytes(storageRef, selectedFile);
-
-      // Get download URL
-      const downloadURL = await getDownloadURL(storageRef);
-
-      // Save metadata to Firestore
-      const photoData = {
-        fileName: fileName,
-        imagePath: imagePath,
-        downloadURL: downloadURL,
-        description: description,
-        uploadDate: new Date().toISOString(),
-        uploadedBy: currentUser.uid,
-        uploadedByName: currentUser.displayName || currentUser.email,
-        familyId: familyId,
-        fileSize: selectedFile.size,
-        fileType: selectedFile.type
-      };
-
-      await addDoc(collection(db, 'photos'), photoData);
-
-      // Reset form and redirect
-      setSelectedFile(null);
+      // Upload each file with progress
+      const updatedFiles = [...selectedFiles];
+      const uploadPromises = updatedFiles.map((item, idx) => {
+        return new Promise((resolve, reject) => {
+          const file = item.file;
+          const timestamp = Date.now() + idx;
+          const fileName = `${currentUser.uid}_${timestamp}_${file.name}`;
+          const imagePath = `families/${familyId}/${fileName}`;
+          const storageRef = ref(storage, imagePath);
+          const uploadTask = uploadBytesResumable(storageRef, file);
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              setSelectedFiles(prevFiles => {
+                const newFiles = [...prevFiles];
+                newFiles[idx] = { ...newFiles[idx], progress };
+                return newFiles;
+              });
+            },
+            (error) => {
+              setSelectedFiles(prevFiles => {
+                const newFiles = [...prevFiles];
+                newFiles[idx] = { ...newFiles[idx], error: 'Upload failed' };
+                return newFiles;
+              });
+              reject(error);
+            },
+            async () => {
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                const photoData = {
+                  fileName: fileName,
+                  imagePath: imagePath,
+                  downloadURL: downloadURL,
+                  description: description,
+                  uploadDate: new Date().toISOString(),
+                  uploadedBy: currentUser.uid,
+                  uploadedByName: currentUser.displayName || currentUser.email,
+                  familyId: familyId,
+                  fileSize: file.size,
+                  fileType: file.type
+                };
+                await addDoc(collection(db, 'photos'), photoData);
+                resolve();
+              } catch (err) {
+                setSelectedFiles(prevFiles => {
+                  const newFiles = [...prevFiles];
+                  newFiles[idx] = { ...newFiles[idx], error: 'Upload failed' };
+                  return newFiles;
+                });
+                reject(err);
+              }
+            }
+          );
+        });
+      });
+      await Promise.all(uploadPromises);
+      setSelectedFiles([]);
       setDescription('');
       navigate('/');
     } catch (error) {
       console.error('Upload error:', error);
-      setError('Failed to upload photo. Please try again.');
+      setError('Failed to upload photo(s). Please try again.');
     } finally {
       setUploading(false);
     }
@@ -132,40 +157,51 @@ export default function UploadPhoto() {
         <form onSubmit={handleSubmit} className="upload-form">
           <div className="file-upload-area">
             <div
-              className={`drag-drop-zone ${dragActive ? 'drag-active' : ''} ${selectedFile ? 'file-selected' : ''}`}
+              className={`drag-drop-zone ${dragActive ? 'drag-active' : ''} ${selectedFiles.length ? 'file-selected' : ''}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current.click()}
             >
-              {selectedFile ? (
-                <div className="file-preview">
-                  <img 
-                    src={URL.createObjectURL(selectedFile)} 
-                    alt="Preview" 
-                    className="preview-image"
-                  />
-                  <p className="file-name">{selectedFile.name}</p>
-                  <p className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              {selectedFiles.length ? (
+                <div className="file-preview-multi">
+                  {selectedFiles.map((item, idx) => (
+                    <div className="file-preview" key={idx}>
+                      <img 
+                        src={URL.createObjectURL(item.file)} 
+                        alt="Preview" 
+                        className="preview-image"
+                      />
+                      <p className="file-name">{item.file.name}</p>
+                      <p className="file-size">{(item.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      {uploading && (
+                        <div className="progress-bar-container">
+                          <div className="progress-bar" style={{ width: `${item.progress || 0}%` }}></div>
+                          <span className="progress-label">{item.progress ? `${item.progress}%` : '0%'}</span>
+                        </div>
+                      )}
+                      {item.error && <div className="error-alert">{item.error}</div>}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="upload-prompt">
                   <div className="upload-icon">📷</div>
-                  <p>Drag and drop your photo here, or click to browse</p>
-                  <p className="upload-hint">Supports: JPG, PNG, GIF, WebP</p>
+                  <p>Drag and drop your photos here, or click to browse</p>
+                  <p className="upload-hint">Supports: JPG, PNG, GIF, WebP. You can select multiple files.</p>
                 </div>
               )}
             </div>
-            
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileInput}
               style={{ display: 'none' }}
-              aria-label="Select photo file"
-              title="Select photo file"
+              aria-label="Select photo files"
+              title="Select photo files"
             />
           </div>
 
@@ -183,9 +219,9 @@ export default function UploadPhoto() {
           <button 
             type="submit" 
             className="upload-button"
-            disabled={!selectedFile || uploading}
+            disabled={!selectedFiles.length || uploading}
           >
-            {uploading ? 'Uploading...' : 'Upload Photo'}
+            {uploading ? 'Uploading...' : `Upload ${selectedFiles.length > 1 ? 'Photos' : 'Photo'}`}
           </button>
         </form>
       </div>
