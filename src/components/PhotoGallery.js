@@ -12,7 +12,25 @@ export default function PhotoGallery() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [groupBy, setGroupBy] = useState('date'); // 'date' or 'album'
+  const [search, setSearch] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [filterAlbum, setFilterAlbum] = useState('');
   const { currentUser } = useAuth();
+  // Get all unique tags and albums for filter dropdowns
+  const allTags = Array.from(new Set(photos.flatMap(p => Array.isArray(p.tags) ? p.tags : [])));
+  const allAlbums = Array.from(new Set(photos.map(p => p.album && p.album.trim() ? p.album : 'Default Album')));
+  function groupPhotosByAlbum(photos) {
+    const groups = {};
+    photos.forEach(photo => {
+      const albumKey = photo.album && photo.album.trim() ? photo.album : 'Default Album';
+      if (!groups[albumKey]) {
+        groups[albumKey] = [];
+      }
+      groups[albumKey].push(photo);
+    });
+    return groups;
+  }
 
   useEffect(() => {
     fetchPhotos();
@@ -175,49 +193,112 @@ export default function PhotoGallery() {
     );
   }
 
-  const photoGroups = groupPhotosByDate(photos);
+
+  // Filter photos based on search and filters
+  const filteredPhotos = photos.filter(photo => {
+    // Search by description, tags, or album
+    const searchLower = search.trim().toLowerCase();
+    const matchesSearch =
+      !searchLower ||
+      (photo.description && photo.description.toLowerCase().includes(searchLower)) ||
+      (Array.isArray(photo.tags) && photo.tags.some(tag => tag.toLowerCase().includes(searchLower))) ||
+      (photo.album && photo.album.toLowerCase().includes(searchLower));
+    const matchesTag = !filterTag || (Array.isArray(photo.tags) && photo.tags.includes(filterTag));
+    const matchesAlbum = !filterAlbum || (photo.album ? photo.album === filterAlbum : filterAlbum === 'Default Album');
+    return matchesSearch && matchesTag && matchesAlbum;
+  });
+
+  const photoGroups = groupBy === 'date' ? groupPhotosByDate(filteredPhotos) : groupPhotosByAlbum(filteredPhotos);
 
   return (
     <div className="gallery-container">
       <div className="gallery-header">
         <h1>Family Photos</h1>
         <p>{photos.length} photos in your collection</p>
+        <div className="gallery-controls">
+          <input
+            type="text"
+            className="gallery-search"
+            placeholder="Search by description, tag, or album..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <select
+            className="gallery-filter"
+            value={filterTag}
+            onChange={e => setFilterTag(e.target.value)}
+          >
+            <option value="">All Tags</option>
+            {allTags.map((tag, idx) => (
+              <option value={tag} key={idx}>{tag}</option>
+            ))}
+          </select>
+          <select
+            className="gallery-filter"
+            value={filterAlbum}
+            onChange={e => setFilterAlbum(e.target.value)}
+          >
+            <option value="">All Albums</option>
+            {allAlbums.map((album, idx) => (
+              <option value={album} key={idx}>{album}</option>
+            ))}
+          </select>
+          <div className="gallery-toggle-group">
+            <button
+              className={`gallery-toggle-btn${groupBy === 'date' ? ' active' : ''}`}
+              onClick={() => setGroupBy('date')}
+              aria-pressed={groupBy === 'date'}
+            >
+              Group by Date
+            </button>
+            <button
+              className={`gallery-toggle-btn${groupBy === 'album' ? ' active' : ''}`}
+              onClick={() => setGroupBy('album')}
+              aria-pressed={groupBy === 'album'}
+            >
+              Group by Album
+            </button>
+          </div>
+        </div>
       </div>
-      
+
       <div className="photo-groups">
-        {Object.entries(photoGroups).map(([dateKey, groupPhotos]) => (
-          <div key={dateKey} className="photo-group">
-            <h2 className="date-header">{getDateGroupTitle(dateKey)}</h2>
+        {Object.entries(photoGroups).map(([groupKey, groupPhotos]) => (
+          <div key={groupKey} className="photo-group">
+            <h2 className="date-header">{groupBy === 'date' ? getDateGroupTitle(groupKey) : groupKey}</h2>
             <div className="photo-grid">
-                             {groupPhotos.map(photo => (
-                 <div 
-                   key={photo.id} 
-                   className="photo-item"
-                   onClick={() => handlePhotoClick(photo)}
-                   role="button"
-                   tabIndex={0}
-                   onKeyDown={(e) => {
-                     if (e.key === 'Enter' || e.key === ' ') {
-                       e.preventDefault();
-                       handlePhotoClick(photo);
-                     }
-                   }}
-                 >
-                   <img 
-                     src={photo.downloadURL} 
-                     alt={photo.description || 'Family photo'}
-                     loading="lazy"
-                   />
-                   {photo.description && (
-                     <div className="photo-description">{photo.description}</div>
-                   )}
-                 </div>
-               ))}
+              {groupPhotos.map(photo => (
+                <div 
+                  key={photo.id} 
+                  className="photo-item"
+                  onClick={() => handlePhotoClick(photo)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handlePhotoClick(photo);
+                    }
+                  }}
+                >
+                  <img 
+                    src={photo.downloadURL} 
+                    alt={photo.description || 'Family photo'}
+                    loading="lazy"
+                  />
+                  {photo.description && (
+                    <div className="photo-description">{photo.description}</div>
+                  )}
+                  {groupBy === 'date' && photo.album && (
+                    <div className="photo-album-label">{photo.album}</div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         ))}
       </div>
-      
+
       {/* Photo Modal */}
       {selectedPhoto && (
         <PhotoModal 

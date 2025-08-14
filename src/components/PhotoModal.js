@@ -52,6 +52,14 @@ export default function PhotoModal({ photo, onClose }) {
                {photo.description && (
                  <p><strong>Description:</strong> {photo.description}</p>
                )}
+               {photo.tags && photo.tags.length > 0 && (
+                 <div className="photo-tags">
+                   <strong>Tags:</strong>{' '}
+                   {photo.tags.map((tag, idx) => (
+                     <span className="photo-tag-item" key={idx}>{tag}</span>
+                   ))}
+                 </div>
+               )}
              </div>
           </div>
         </div>
