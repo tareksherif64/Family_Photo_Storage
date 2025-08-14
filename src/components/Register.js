@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Register.css';
 
 export default function Register() {
+  useEffect(() => {
+    document.body.classList.add('register-page');
+    return () => {
+      document.body.classList.remove('register-page');
+    };
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

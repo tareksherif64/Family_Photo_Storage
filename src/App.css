@@ -4,15 +4,21 @@
   box-sizing: border-box;
 }
 
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8f9fa;
   color: #333;
   line-height: 1.6;
+}
+
+body:not(.login-page):not(.register-page),
+.App:not(.login-page):not(.register-page) {
+  background: linear-gradient(135deg, #e3e9f7 0%, #f8fafc 60%, #e9ecef 100%) !important;
+  min-height: 100vh;
 }
 
 .App {
@@ -148,8 +154,10 @@ body.dark-mode {
   color: #ffffff;
 }
 
-body.dark-mode .App {
-  background-color: #1a1a1a;
+body.dark-mode:not(.login-page):not(.register-page),
+body.dark-mode .App:not(.login-page):not(.register-page) {
+  background: linear-gradient(135deg, #23243a 0%, #181a2a 100%) !important;
+  min-height: 100vh;
 }
 
 /* Dark mode form styles */

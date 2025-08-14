@@ -27,10 +27,14 @@ export default function Navbar() {
             📸 Family Photos
           </Link>
         </div>
+        {/* Desktop nav links (centered) */}
+        <div className="nav-menu-desktop">
+          <Link to="/" className="nav-link">Gallery</Link>
+          <Link to="/upload" className="nav-link">Upload</Link>
+          <Link to="/profile" className="nav-link">Profile</Link>
+        </div>
+        {/* User actions (right) */}
         <div className="nav-user">
-          <span className="user-name">
-            {currentUser?.displayName || currentUser?.email}
-          </span>
           <div className="nav-user-desktop-actions">
             <button
               onClick={toggleTheme}
@@ -44,7 +48,7 @@ export default function Navbar() {
             </button>
           </div>
         </div>
-        {/* Hamburger for mobile - moved to far right */}
+        {/* Hamburger for mobile - far right */}
         <button
           className={`nav-hamburger${menuOpen ? ' open' : ''}`}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -56,6 +60,7 @@ export default function Navbar() {
           <span className="hamburger-bar"></span>
           <span className="hamburger-bar"></span>
         </button>
+        {/* Mobile nav menu */}
         <div className={`nav-menu${menuOpen ? ' open' : ''}${isDarkMode ? ' dark' : ''}`} id="nav-menu">
           <div className="nav-menu-inner">
             <Link to="/" className="nav-link" onClick={() => setMenuOpen(false)}>

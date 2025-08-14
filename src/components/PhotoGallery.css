@@ -152,7 +152,7 @@
 
 /* Dark Mode Styles */
 body.dark-mode .gallery-container {
-  background-color: #1a1a1a;
+  background: linear-gradient(135deg, #23243a 0%, #181a2a 100%) !important;
 }
 
 body.dark-mode .gallery-header h1,

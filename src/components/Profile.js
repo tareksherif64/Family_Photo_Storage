@@ -50,9 +50,18 @@ export default function Profile() {
 
   if (loading) return <div className="profile-container"><div>Loading...</div></div>;
 
+  // Helper to get initials from display name
+  function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
   return (
     <div className="profile-container">
       <div className="profile-card">
+        <div className="profile-avatar">{getInitials(displayName)}</div>
         <h1>Your Profile</h1>
         {error && <div className="error-alert">{error}</div>}
         {success && <div className="success-alert">{success}</div>}
