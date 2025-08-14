@@ -1,0 +1,212 @@
+.photo-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.photo-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+.close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.photo-modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.photo-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  min-height: 300px;
+}
+
+.modal-photo {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.photo-details {
+  padding: 24px;
+  background: white;
+  border-top: 1px solid #e9ecef;
+}
+
+.photo-info h3 {
+  margin: 0 0 16px 0;
+  color: #212529;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.photo-info p {
+  margin: 8px 0;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.photo-info strong {
+  color: #495057;
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .photo-modal-overlay {
+    padding: 10px;
+  }
+  
+  .photo-modal {
+    border-radius: 12px;
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+  
+  .close-button {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+  
+  .photo-details {
+    padding: 20px;
+  }
+  
+  .photo-info h3 {
+    font-size: 16px;
+  }
+  
+  .photo-info p {
+    font-size: 13px;
+  }
+}
+
+/* Tablet responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .photo-modal {
+    max-width: 85vw;
+    max-height: 85vh;
+  }
+}
+
+/* Desktop - larger modal for better photo viewing */
+@media (min-width: 1025px) {
+  .photo-modal {
+    max-width: 80vw;
+    max-height: 80vh;
+  }
+  
+  .photo-modal-content {
+    flex-direction: row;
+  }
+  
+  .photo-container {
+    flex: 2;
+    min-height: 500px;
+  }
+  
+  .photo-details {
+    flex: 1;
+    border-top: none;
+    border-left: 1px solid #e9ecef;
+    max-width: 300px;
+  }
+}
+
+/* Dark Mode Styles */
+body.dark-mode .photo-modal {
+  background: #2d2d2d;
+  color: #ffffff;
+}
+
+body.dark-mode .photo-container {
+  background: #1a1a1a;
+}
+
+body.dark-mode .photo-details {
+  background: #2d2d2d;
+  border-color: #444;
+}
+
+body.dark-mode .photo-info h3 {
+  color: #ffffff;
+}
+
+body.dark-mode .photo-info p {
+  color: #cccccc;
+}
+
+body.dark-mode .photo-info strong {
+  color: #ffffff;
+}
