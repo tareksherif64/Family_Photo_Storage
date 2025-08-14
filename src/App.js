@@ -7,6 +7,7 @@ import Register from './components/Register';
 import PhotoGallery from './components/PhotoGallery';
 import UploadPhoto from './components/UploadPhoto';
 import Navbar from './components/Navbar';
+import Profile from './components/Profile';
 import './App.css';
 
 // Protected Route component
@@ -37,6 +38,14 @@ function App() {
                   <div>
                     <Navbar />
                     <UploadPhoto />
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <div>
+                    <Navbar />
+                    <Profile />
                   </div>
                 </ProtectedRoute>
               } />

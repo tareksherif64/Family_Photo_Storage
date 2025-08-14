@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,10 +16,50 @@ export default function PhotoGallery() {
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterAlbum, setFilterAlbum] = useState('');
+  const [favorites, setFavorites] = useState([]); // array of photo IDs
+  const [favLoading, setFavLoading] = useState(false);
   const { currentUser } = useAuth();
+
+  // Fetch user favorites
+  useEffect(() => {
+    async function fetchFavorites() {
+      if (!currentUser) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setFavorites(Array.isArray(data.favorites) ? data.favorites : []);
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    fetchFavorites();
+  }, [currentUser]);
+
+  // Toggle favorite for a photo
+  const toggleFavorite = async (photoId) => {
+    if (!currentUser) return;
+    setFavLoading(true);
+    const userRef = doc(db, 'users', currentUser.uid);
+    try {
+      if (favorites.includes(photoId)) {
+        await updateDoc(userRef, { favorites: arrayRemove(photoId) });
+        setFavorites(favorites.filter(id => id !== photoId));
+      } else {
+        await updateDoc(userRef, { favorites: arrayUnion(photoId) });
+        setFavorites([...favorites, photoId]);
+      }
+    } catch (err) {
+      // ignore
+    } finally {
+      setFavLoading(false);
+    }
+  };
   // Get all unique tags and albums for filter dropdowns
   const allTags = Array.from(new Set(photos.flatMap(p => Array.isArray(p.tags) ? p.tags : [])));
-  const allAlbums = Array.from(new Set(photos.map(p => p.album && p.album.trim() ? p.album : 'Default Album')));
+  // Add 'Favorites' as a virtual album always present in the dropdown
+  const allAlbums = ['Favorites', ...Array.from(new Set(photos.map(p => p.album && p.album.trim() ? p.album : 'Default Album'))).filter(a => a !== 'Favorites')];
   function groupPhotosByAlbum(photos) {
     const groups = {};
     photos.forEach(photo => {
@@ -196,6 +236,10 @@ export default function PhotoGallery() {
 
   // Filter photos based on search and filters
   const filteredPhotos = photos.filter(photo => {
+    // If filtering by 'Favorites', only show favorited photos
+    if (filterAlbum === 'Favorites') {
+      return favorites.includes(photo.id);
+    }
     // Search by description, tags, or album
     const searchLower = search.trim().toLowerCase();
     const matchesSearch =
@@ -208,7 +252,15 @@ export default function PhotoGallery() {
     return matchesSearch && matchesTag && matchesAlbum;
   });
 
-  const photoGroups = groupBy === 'date' ? groupPhotosByDate(filteredPhotos) : groupPhotosByAlbum(filteredPhotos);
+  // When grouping by album, add a 'Favorites' group at the top
+  let photoGroups;
+  if (groupBy === 'album') {
+    const favoritesGroup = filteredPhotos.filter(photo => favorites.includes(photo.id));
+    const albumGroups = groupPhotosByAlbum(filteredPhotos);
+    photoGroups = { Favorites: favoritesGroup, ...albumGroups };
+  } else {
+    photoGroups = groupPhotosByDate(filteredPhotos);
+  }
 
   return (
     <div className="gallery-container">
@@ -270,9 +322,7 @@ export default function PhotoGallery() {
               {groupPhotos.map(photo => (
                 <div 
                   key={photo.id} 
-                  className="photo-item"
-                  onClick={() => handlePhotoClick(photo)}
-                  role="button"
+                  className={`photo-item${favorites.includes(photo.id) ? ' favorited' : ''}`}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -281,17 +331,30 @@ export default function PhotoGallery() {
                     }
                   }}
                 >
-                  <img 
-                    src={photo.downloadURL} 
-                    alt={photo.description || 'Family photo'}
-                    loading="lazy"
-                  />
-                  {photo.description && (
-                    <div className="photo-description">{photo.description}</div>
-                  )}
-                  {groupBy === 'date' && photo.album && (
-                    <div className="photo-album-label">{photo.album}</div>
-                  )}
+                  <div className="photo-fav-btn-container">
+                    <button
+                      type="button"
+                      className={`photo-fav-btn${favorites.includes(photo.id) ? ' active' : ''}`}
+                      onClick={e => { e.stopPropagation(); toggleFavorite(photo.id); }}
+                      aria-label={favorites.includes(photo.id) ? 'Remove from favorites' : 'Add to favorites'}
+                      disabled={favLoading}
+                    >
+                      {favorites.includes(photo.id) ? '★' : '☆'}
+                    </button>
+                  </div>
+                  <div onClick={() => handlePhotoClick(photo)} role="button">
+                    <img 
+                      src={photo.downloadURL} 
+                      alt={photo.description || 'Family photo'}
+                      loading="lazy"
+                    />
+                    {photo.description && (
+                      <div className="photo-description">{photo.description}</div>
+                    )}
+                    {groupBy === 'date' && photo.album && (
+                      <div className="photo-album-label">{photo.album}</div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -303,7 +366,12 @@ export default function PhotoGallery() {
       {selectedPhoto && (
         <PhotoModal 
           photo={selectedPhoto} 
-          onClose={closeModal} 
+          onClose={closeModal}
+          onDelete={(deletedId) => {
+            // Remove deleted photo from gallery
+            setPhotos(prev => prev.filter(p => p.id !== deletedId));
+            setSelectedPhoto(null);
+          }}
         />
       )}
     </div>

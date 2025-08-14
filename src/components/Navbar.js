@@ -34,6 +34,9 @@ export default function Navbar() {
           <Link to="/upload" className="nav-link">
             Upload
           </Link>
+          <Link to="/profile" className="nav-link">
+            Profile
+          </Link>
         </div>
         
         <div className="nav-user">
