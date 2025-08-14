@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -8,6 +8,7 @@ export default function Navbar() {
   const { currentUser, logout } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleLogout() {
     try {
@@ -26,19 +27,29 @@ export default function Navbar() {
             📸 Family Photos
           </Link>
         </div>
-        
-        <div className="nav-menu">
-          <Link to="/" className="nav-link">
+        {/* Hamburger for mobile */}
+        <button
+          className={`nav-hamburger${menuOpen ? ' open' : ''}`}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          aria-controls="nav-menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span className="hamburger-bar"></span>
+          <span className="hamburger-bar"></span>
+          <span className="hamburger-bar"></span>
+        </button>
+        <div className={`nav-menu${menuOpen ? ' open' : ''}`} id="nav-menu">
+          <Link to="/" className="nav-link" onClick={() => setMenuOpen(false)}>
             Gallery
           </Link>
-          <Link to="/upload" className="nav-link">
+          <Link to="/upload" className="nav-link" onClick={() => setMenuOpen(false)}>
             Upload
           </Link>
-          <Link to="/profile" className="nav-link">
+          <Link to="/profile" className="nav-link" onClick={() => setMenuOpen(false)}>
             Profile
           </Link>
         </div>
-        
         <div className="nav-user">
           <button 
             onClick={toggleTheme} 
