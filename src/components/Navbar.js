@@ -27,7 +27,24 @@ export default function Navbar() {
             📸 Family Photos
           </Link>
         </div>
-        {/* Hamburger for mobile */}
+        <div className="nav-user">
+          <span className="user-name">
+            {currentUser?.displayName || currentUser?.email}
+          </span>
+          <div className="nav-user-desktop-actions">
+            <button
+              onClick={toggleTheme}
+              className={`theme-toggle ${isDarkMode ? 'dark' : 'light'}`}
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+            <button onClick={handleLogout} className="logout-button">
+              Logout
+            </button>
+          </div>
+        </div>
+        {/* Hamburger for mobile - moved to far right */}
         <button
           className={`nav-hamburger${menuOpen ? ' open' : ''}`}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -39,31 +56,31 @@ export default function Navbar() {
           <span className="hamburger-bar"></span>
           <span className="hamburger-bar"></span>
         </button>
-        <div className={`nav-menu${menuOpen ? ' open' : ''}`} id="nav-menu">
-          <Link to="/" className="nav-link" onClick={() => setMenuOpen(false)}>
-            Gallery
-          </Link>
-          <Link to="/upload" className="nav-link" onClick={() => setMenuOpen(false)}>
-            Upload
-          </Link>
-          <Link to="/profile" className="nav-link" onClick={() => setMenuOpen(false)}>
-            Profile
-          </Link>
-        </div>
-        <div className="nav-user">
-          <button 
-            onClick={toggleTheme} 
-            className={`theme-toggle ${isDarkMode ? 'dark' : 'light'}`}
-            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
-          <span className="user-name">
-            {currentUser?.displayName || currentUser?.email}
-          </span>
-          <button onClick={handleLogout} className="logout-button">
-            Logout
-          </button>
+        <div className={`nav-menu${menuOpen ? ' open' : ''}${isDarkMode ? ' dark' : ''}`} id="nav-menu">
+          <div className="nav-menu-inner">
+            <Link to="/" className="nav-link" onClick={() => setMenuOpen(false)}>
+              Gallery
+            </Link>
+            <Link to="/upload" className="nav-link" onClick={() => setMenuOpen(false)}>
+              Upload
+            </Link>
+            <Link to="/profile" className="nav-link" onClick={() => setMenuOpen(false)}>
+              Profile
+            </Link>
+            {/* Mobile-only: Theme toggle and logout */}
+            <div className="nav-menu-mobile-actions">
+              <button
+                onClick={() => { toggleTheme(); }}
+                className={`theme-toggle ${isDarkMode ? 'dark' : 'light'}`}
+                aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+              <button onClick={() => { handleLogout(); setMenuOpen(false); }} className="logout-button">
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </nav>
